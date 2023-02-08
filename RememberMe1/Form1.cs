@@ -22,10 +22,10 @@ namespace RememberMe1
     public partial class Form1 : Form
     {
         Mem m = new Mem();
-        public string curCheckpoint;
+        public string curCheckpoint = "";
         public int isInCineamatic = 0;
 
-        string SaveFileLocater = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
+        string SaveFileLocator = Environment.GetFolderPath(Environment.SpecialFolder.MyDocuments);
 
         public Form1()
         {
@@ -35,7 +35,17 @@ namespace RememberMe1
 
         private void CheckKeys()
         {
-            string[] files = { "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "T", "Y", "U", "I", "O", "P", "G", "H", "J", "K", "L", "v", "B", "N", "M", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" };
+            string[] files = { "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "T", "Y", "U", "I", "O", "P", "G", "H", "J", "K", "L", "V", "B", "N", "M", "1", "2", "3", "4", "5", "6", "7", "8", "9", "0" };
+            string SaveFileBuffer = SaveFileLocator + @"\My Games\UnrealEngine3\RememberMeGame\Config";
+            string SaveFilePath = SaveFileBuffer + "\\" + "ExampleInput.ini";
+            if (!File.Exists(SaveFilePath))
+            {
+                MessageBox.Show("ExampleInput.ini file in folder " + SaveFileLocator + @"\My Games\UnrealEngine3\RememberMeGame\Config" + " was not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                Environment.Exit(1);
+                //throw new Exception("No config files");
+            }
+            var ini = File.ReadLines(SaveFilePath);
+            string hotkey = "";
 
             foreach (string file in files)
             {
@@ -49,58 +59,57 @@ namespace RememberMe1
                     SloMoText.Items.Add(file);
                 }
             }
+
+            foreach (string line in ini) {
+                if(line.Contains("Command=\"faster\"")) {
+                    hotkey = line.Substring(line.IndexOf("=\"")+2, line.IndexOf("\",") - line.IndexOf("=\"")-2);
+                    if(Array.IndexOf(files, hotkey) >= 0) {
+                        SloMoText.Text = hotkey;
+                        SloMoText.SelectedIndex = SloMoText.FindStringExact(hotkey);
+                    }
+                } else if(line.Contains("CANCELMATINEE")) {
+                    hotkey = line.Substring(line.IndexOf("=\"")+2, line.IndexOf("\",") - line.IndexOf("=\"")-2);
+                    if(Array.IndexOf(files, hotkey) >= 0) {
+                        CancelText.Text = hotkey;
+                        CancelText.SelectedIndex = CancelText.FindStringExact(hotkey);
+                    }
+                }
+            }
         }
 
         private void ConfigChecker()
         {
-            string SaveFileBuffer = SaveFileLocater + @"\My games\UnrealEngine3\RememberMeGame\Config";
+            string SaveFileBuffer = SaveFileLocator + @"\My Games\UnrealEngine3\RememberMeGame\Config";
             string SaveFilePath = SaveFileBuffer + "\\" + "ExampleInput.ini";
 
             if (!File.Exists(SaveFilePath))
             {
                 // InsertLine = true;
-                throw new Exception("No config files");
+                MessageBox.Show("ExampleInput.ini file in folder " + SaveFileLocator + @"\My Games\UnrealEngine3\RememberMeGame\Config" + " was not found.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+                //throw new Exception("No config files");
             }
 
+            if (SloMoText.SelectedIndex == -1 && CancelText.SelectedIndex == -1) {
+                MessageBox.Show("No hotkeys were chosen", "Error", MessageBoxButtons.OK, MessageBoxIcon.Error);
+                return;
+                //throw new Exception("No hotkeys chosen");
+            } else if (SloMoText.SelectedIndex == -1 || CancelText.SelectedIndex == -1) {
+                MessageBox.Show("Please choose both hotkeys", "Error", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                return;
+            }
 
             string Spath = Path.GetDirectoryName(Application.StartupPath);
             Spath = Environment.ExpandEnvironmentVariables(Spath);
             var tempFile = Spath + @"\Temp Files\ExampleInput.ini";
-            var linesToKeep = File.ReadLines(SaveFilePath).Where(l => !l.Contains(SloMoText.SelectedItem.ToString())).Where(l => !l.Contains(CancelText.SelectedItem.ToString())).Where(l => !l.Contains("CANCELMATINEE")).Where(l => !l.Contains("set SeqAct_Interp Playrate"));
-            int Can = 0;
-            int Slo = 0;
+            int sectionCount = 0;
+            var linesToKeep = File.ReadLines(SaveFilePath).Where(l => !l.Contains("faster")).Where(l => !l.Contains(SloMoText.Items[SloMoText.SelectedIndex].ToString()+",")).Where(l => !l.Contains(CancelText.Items[CancelText.SelectedIndex].ToString()+",")).Where(l => !l.Contains("CANCELMATINEE")).Where(l => !l.Contains("set SeqAct_Interp Playrate"));
             File.WriteAllLines(tempFile, linesToKeep);
 
-            foreach (var line in linesToKeep)
+            using (StreamWriter sw = File.AppendText(tempFile))
             {
-                if (line.Contains("CANCELMATINEE"))
-                {
-                    Can = 1;
-                }
-
-                if (line.Contains("set SeqAct_Interp Playrate"))
-                {
-                    Slo = 1;
-                }
-            }
-
-            if (Slo != 1)
-            {
-                using (StreamWriter sw = File.AppendText(tempFile))
-                {
-                    sw.WriteLine("[Engine.PlayerInput]\r\n" + "Bindings=(Name=\"" + SloMoText.SelectedItem.ToString() + "\",Command=\"faster\")\r\nBindings=(Name=\"faster\",Command=\"set SeqAct_Interp Playrate 100 | setbind " + SloMoText.SelectedItem.ToString() + " slower\")\r\nBindings=(Name=\"slower\",Command=\"set SeqAct_Interp Playrate 1 | setbind " + SloMoText.SelectedItem.ToString() + " faster\")");
-                    textBox3.Text = SloMoText.SelectedItem.ToString();
-                }
-            }
-
-            if (Can != 1)
-            {
-                using (StreamWriter sw = File.AppendText(tempFile))
-                {
-                    sw.WriteLine("Bindings=(Name=\"" + CancelText.SelectedItem.ToString() + "\",Command=\"CANCELMATINEE\")");
-                    textBox4.Text = CancelText.SelectedItem.ToString();
-
-                }
+                sw.WriteLine("[Engine.PlayerInput]\r\n" + "Bindings=(Name=\"" + SloMoText.Items[SloMoText.SelectedIndex].ToString() + "\",Command=\"faster\")\r\nBindings=(Name=\"faster\",Command=\"set SeqAct_Interp Playrate 100 | setbind " + SloMoText.Items[SloMoText.SelectedIndex].ToString() + " slower\")\r\nBindings=(Name=\"slower\",Command=\"set SeqAct_Interp Playrate 1 | setbind " + SloMoText.Items[SloMoText.SelectedIndex].ToString() + " faster\")");
+                sw.WriteLine("Bindings=(Name=\"" + CancelText.Items[CancelText.SelectedIndex].ToString() + "\",Command=\"CANCELMATINEE\")");
             }
 
             File.Delete(SaveFilePath);
@@ -118,8 +127,7 @@ namespace RememberMe1
             {
                 IntPtr h = p.MainWindowHandle;
                 SetForegroundWindow(h);
-
-                SendKeys.SendWait(CancelText.SelectedItem.ToString());
+                SendKeys.Send(CancelText.Items[CancelText.SelectedIndex].ToString());
             }
         }
 
@@ -134,8 +142,7 @@ namespace RememberMe1
             {
                 IntPtr h = p.MainWindowHandle;
                 SetForegroundWindow(h);
-
-                SendKeys.SendWait(SloMoText.SelectedItem.ToString());
+                SendKeys.Send(SloMoText.Items[SloMoText.SelectedIndex].ToString());
             }
         }
 
@@ -163,56 +170,78 @@ namespace RememberMe1
 
             textBox3.Text = curCheckpoint;
             textBox4.Text = isInCineamatic.ToString();
-            short keyStatus = GetAsyncKeyState(VK_DELETE);
+
+            /*short keyStatus = GetAsyncKeyState(VK_DELETE);
             short keySta = GetAsyncKeyState(VK_F1);
 
             if ((keySta & 1) == 1)
             {
                 Close();
-            }
+            }*/
 
             if (isInCineamatic == 1)
             {
                 string Checkpointsaved = curCheckpoint;
-
                 var (command, Time, TimesToRun) = _skips[curCheckpoint];
-                textBox3.Text = command.ToString();
 
+                textBox3.Text = command.ToString();
+                
                 for (int loop = 0; loop <= TimesToRun;)
                 {
-                    if (command == SkipCommand.Skip)
-                    {
-                        Thread.Sleep(Time);
-                        SendKeyCan();
-                        command = SkipCommand.Nothing;
+                    curCheckpoint = m.ReadString("base+0x012700F0,0x160,0x3C,0x3C,0x88,0x0", "", 128, true, System.Text.Encoding.Unicode);
+                    isInCineamatic = m.ReadInt("base+0x12432C0");
+                    textBox4.Text = isInCineamatic.ToString();
 
-                    }
-
-                    if (command == SkipCommand.FastForward)
-                    {
-                        SendKeySlo();
-                        if (Time != 0)
+                    if(isInCineamatic == 1) {
+                        if (command == SkipCommand.Skip)
                         {
-                           Thread.Sleep(Time);
-                            isInCineamatic = m.ReadInt("base+0x12432C0");
-                            SendKeySlo();
-                            command = SkipCommand.Nothing;
-                            loop++;
+                            Thread.Sleep(Time+50); //for autosplitter
+                            SendKeyCan();
                         }
 
+                        if (command == SkipCommand.FastForward) // still problems in the game with the fastforwards sometimes, in which it stops the fastforwards halfway or doesn't stop fast forwarding, but this is what I have for now
+                        {
+                            Thread.Sleep(50); //for autosplitter
+                            if (Time != 0)
+                            {
+                                Thread.Sleep(Time);
+                                SendKeySlo();
+                                while(isInCineamatic == 1) {
+                                    isInCineamatic = m.ReadInt("base+0x12432C0");
+                                }
+                            }
+                            else 
+                            {
+                                SendKeySlo();
+                                while(isInCineamatic == 1) {
+                                    isInCineamatic = m.ReadInt("base+0x12432C0");
+                                }
+                            }
+                        }
                     }
+                    else if (command == SkipCommand.FastForward && loop % 2 == 1) 
+                    {
+                        SendKeySlo();
+                    }
+                    else if (command == SkipCommand.FastForward && loop % 2 == 0) 
+                    {
+                        while(isInCineamatic == 0) {
+                            isInCineamatic = m.ReadInt("base+0x12432C0");
+                        }
+                        loop--;
+                    }
+
                     loop++;
                 }
-                command = SkipCommand.Nothing;
+                //command = SkipCommand.Nothing;
                // doneSplit.Add(Checkpointsaved);
 
             }
         }
 
         // calls text updater
-        private void CancelText_SelectedValueChanged(object sender, EventArgs e)
+        private void CancelText_SelectedIndexChanged(object sender, EventArgs e)
         {
-            CheckKeys();
         }
         //Calls config checker
         private void button1_Click(object sender, EventArgs e)
@@ -220,23 +249,22 @@ namespace RememberMe1
             ConfigChecker();
         }
 
-        private void Form1_FormClosing(object sender, FormClosingEventArgs e)
+        /*private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             string Spath = Path.GetDirectoryName(Application.StartupPath);
             Spath = Environment.ExpandEnvironmentVariables(Spath);
             var tempFile = Spath + @"\Temp Files\SaveFile.txt";
 
+            
+                using (StreamWriter sw = File.AppendText(tempFile))
+                {
+                        sw.WriteLine(CancelText.SelectedIndex.ToString() + "Can");
+                        sw.WriteLine(SloMoText.SelectedIndex.ToString() + "Slo");
+                }
 
-            using (StreamWriter sw = File.AppendText(tempFile))
-            {
+        }*/
 
-                sw.WriteLine(CancelText.SelectedItem.ToString() + "Can");
-                sw.WriteLine(SloMoText.SelectedItem.ToString() + "Slo");
-            }
-
-        }
-
-        private void Form1_Load(object sender, EventArgs e)
+        /*private void Form1_Load(object sender, EventArgs e)
         {
             string Spath = Path.GetDirectoryName(Application.StartupPath);
             Spath = Environment.ExpandEnvironmentVariables(Spath);
@@ -250,24 +278,25 @@ namespace RememberMe1
                 if (line.Contains("Can"))
                 {
                     line.Replace("Can", null);
-                    CancelText.SelectedItem = line.Replace("Can", null);
+                    CancelText.SelectedIndex = line.Replace("Can", null);
                 }
 
                 if (line.Contains("Slo"))
                 {
                     line.Replace("Slo", null);
-                    SloMoText.SelectedItem = line.Replace("Slo", null);
+                    SloMoText.SelectedIndex = line.Replace("Slo", null);
                 }
             }
             File.Copy(tempFile, Spath + @"\Temp Files\SaveFileCopy.txt", true);
             File.Delete(tempFile);
             using (StreamWriter sw = File.AppendText(tempFile))
             {
-
-                sw.WriteLine(CancelText.SelectedItem.ToString() + "Can");
-                sw.WriteLine(SloMoText.SelectedItem.ToString() + "Slo");
+                if(CancelText != null) {
+                    sw.WriteLine(CancelText.SelectedIndex.ToString() + "Can");
+                    sw.WriteLine(SloMoText.SelectedIndex.ToString() + "Slo");
+                }
             }
-        }
+        }*/
 
         
 
@@ -299,15 +328,14 @@ namespace RememberMe1
             ["10_Checkpoint_AfterFightSlumDock"] = new(SkipCommand.FastForward, 0, 1),
             ["011_2_Checkpoint_BeginFloatingMarket(relookat, 1)"] = new(SkipCommand.Skip, 0, 1),
             ["12_3_Checkpoint_CorridorBeginInter"] = new(SkipCommand.FastForward, 0, 1),
-            ["14_Checkpoint_CorridorEnd"] = new(SkipCommand.Nothing, 0, 1),
-            ["14_Checkpoint_CorridorEnd"] = new(SkipCommand.FastForward, 0, 1),
+            ["14_Checkpoint_CorridorEnd"] = new(SkipCommand.Nothing, 0, 0),
             ["15_Checkpoint_LeakingBrainBegin"] = new(SkipCommand.FastForward, 0, 1),
             ["16_Checkpoint_LeakingBrainRTC"] = new(SkipCommand.FastForward, 0, 1),
             ["MemoryRemix_03"] = new(SkipCommand.Nothing, 0, 1),
             ["01_BeginEpisode"] = new(SkipCommand.Skip, 0, 1),
             ["02a_Courtyard_Fight1_BeforeRTC"] = new(SkipCommand.FastForward, 0, 1),
             ["05a_Courtyard_Fight2_BeforeRTC"] = new(SkipCommand.Skip, 0, 1),
-            ["05b_Courtyard_Fight2_BeforeFight"] = new(SkipCommand.Nothing, 0, 1),
+            ["05b_Courtyard_Fight2_BeforeFight"] = new(SkipCommand.Nothing, 0, 0),
             ["08_Canopy_Begin"] = new(SkipCommand.FastForward, 0, 1),
             ["09c_AfterCanopy_Fight_AfterFight"] = new(SkipCommand.FastForward, 0, 1),
             ["10b_ComfortressRoofs_Begin_AfterRTC"] = new(SkipCommand.Skip, 0, 1),
@@ -319,7 +347,7 @@ namespace RememberMe1
             ["20a_ComfortressFacade_End"] = new(SkipCommand.Skip, 0, 1),
             ["21_Kidroof_KidFight_1"] = new(SkipCommand.FastForward, 0, 1),
             ["22_Kidroof_KidFight_2"] = new(SkipCommand.FastForward, 0, 1),
-            ["23b_Kidroof_KidFight_4"] = new(SkipCommand.Nothing, 0, 1),
+            ["23b_Kidroof_KidFight_4"] = new(SkipCommand.Nothing, 0, 0),
             ["24_Kidroof_KidFight_End"] = new(SkipCommand.Skip, 0, 1),
             ["CP_Episode_Episode3_Begin"] = new(SkipCommand.Skip, 0, 1),
             ["CP_Map_SwitchRoom_BeforeFight"] = new(SkipCommand.FastForward, 0, 1),
@@ -342,17 +370,16 @@ namespace RememberMe1
             ["LevelBegin"] = new(SkipCommand.Skip, 0, 1),
             ["E4_Conveyor_EnteringSector"] = new(SkipCommand.FastForward, 0, 1),
             ["PR1CheckPoint"] = new(SkipCommand.FastForward, 0, 1),
-            ["PrisonRoom1_AfterEdgeCall"] = new(SkipCommand.Nothing, 0, 1),
+            ["PrisonRoom1_AfterEdgeCall"] = new(SkipCommand.Nothing, 0, 0),
             ["AdmCorridors_BeforeCine"] = new(SkipCommand.Skip, 0, 1),
-            ["LockerRoom_BeforeEntering"] = new(SkipCommand.FastForward, 0, 1),
-            ["LockerRoom_BeforeEntering"] = new(SkipCommand.FastForward, 0, 1),
+            ["LockerRoom_BeforeEntering"] = new(SkipCommand.Nothing, 0, 0),
             ["SpartansRoom_BeforeHeavyEnforcer"] = new(SkipCommand.Skip, 0, 1),
             ["PrisonRoom2_EnteringSector"] = new(SkipCommand.Skip, 0, 1),
             ["IntersticeToSera_EnteringSector"] = new(SkipCommand.FastForward, 0, 1),
             ["SeraphimRoom_BeforeFight"] = new(SkipCommand.Nothing, 0, 1),
             ["SeraToMadam_BeforeInterrogationRoom"] = new(SkipCommand.FastForward, 0, 1),
             ["Courtyard_BeforeFight"] = new(SkipCommand.FastForward, 0, 1),
-            ["E4_FightCheckpoint_Courtyard_AfterfirstWave"] = new(SkipCommand.Nothing, 0, 1),
+            ["E4_FightCheckpoint_Courtyard_AfterfirstWave"] = new(SkipCommand.Nothing, 0, 0),
             ["ServerRoom_EnteringSector"] = new(SkipCommand.FastForward, 0, 1),
             ["CP_AfterIntro"] = new(SkipCommand.FastForward, 0, 1),
             ["CP01"] = new(SkipCommand.FastForward, 0, 1),
@@ -361,16 +388,17 @@ namespace RememberMe1
             ["E5_Begin"] = new(SkipCommand.Skip, 0, 1),
             ["E5_LeaperAmbush_FightEnd"] = new(SkipCommand.FastForward, 0, 1),
             ["E5_FloodedStreet"] = new(SkipCommand.Skip, 0, 1),
-            ["E5_NephilimEncounter"] = new(SkipCommand.Nothing, 0, 1),
+            ["E5_NephilimEncounter"] = new(SkipCommand.Nothing, 0, 0),
             ["E5_MemoreyesHQ"] = new(SkipCommand.FastForward, 0, 1),
             ["E5_TraceFirstView"] = new(SkipCommand.Skip, 0, 1),
-            ["E5_GroundBreakAlley"] = new(SkipCommand.Nothing, 0, 1),
+            ["E5_GroundBreakAlley"] = new(SkipCommand.Nothing, 0, 0),
             ["E5_EdgeReminder_AfterCin"] = new(SkipCommand.FastForward, 0, 1),
             ["E5_TraceHacked"] = new(SkipCommand.FastForward, 0, 1),
-            ["E5_ReturnToMemHQ"] = new(SkipCommand.Nothing, 0, 1),
+            ["E5_ReturnToMemHQ"] = new(SkipCommand.Nothing, 0, 0),
             ["E5_CorridorToScylla"] = new(SkipCommand.FastForward, 0, 1),
             ["E5_MRComplete"] = new(SkipCommand.Skip, 0, 1),
-            ["02A_BlitzFight01"] = new(SkipCommand.Skip, 0, 1),
+            ["00_IntermissionEp06"] = new(SkipCommand.Skip, 0, 1),
+            ["02A_BlitzFight01"] = new(SkipCommand.Skip, 500, 1),
             ["03A_PrisonLockers_GettingPickSocket"] = new(SkipCommand.Skip, 0, 1),
             ["05_ExpRoomA_Reveal"] = new(SkipCommand.Skip, 0, 1),
             ["06_ExpRoomA_FightStart"] = new(SkipCommand.Skip, 0, 1),
@@ -384,7 +412,7 @@ namespace RememberMe1
             ["23_SanitationPit_FightEnd"] = new(SkipCommand.Skip, 0, 1),
             ["InitialLoad"] = new(SkipCommand.Skip, 0, 1),
             ["WarehouseFightEnd"] = new(SkipCommand.FastForward, 0, 1),
-            ["PlatformZornBegin"] = new(SkipCommand.Nothing, 0, 1),
+            ["PlatformZornBegin"] = new(SkipCommand.Nothing, 0, 0),
             ["04_PwEntry"] = new(SkipCommand.FastForward, 0, 1),
             ["07_PwWarehouse"] = new(SkipCommand.FastForward, 0, 1),
             ["LiftA"] = new(SkipCommand.FastForward, 0, 1),
@@ -405,7 +433,7 @@ namespace RememberMe1
             ["CP_MR04_Finished"] = new(SkipCommand.FastForward, 1000, 1),
             ["CP_H3ORoom_beforeRTC"] = new(SkipCommand.FastForward, 0, 1),
             ["CP00_Ego2"] = new(SkipCommand.Skip, 0, 1),
-            ["CP_BeginOlga"] = new(SkipCommand.Nothing, 0, 1),
+            ["CP_BeginOlga"] = new(SkipCommand.Nothing, 0, 0),
             ["CP_BeginScylla"] = new(SkipCommand.FastForward, 0, 1),
         
         };
