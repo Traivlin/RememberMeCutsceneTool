@@ -115,19 +115,51 @@ namespace RememberMe1
             File.Delete(SaveFilePath);
             File.Copy(tempFile, SaveFilePath);
             File.SetAttributes(SaveFilePath, FileAttributes.Normal);
+
+            if(Process.GetProcessesByName("RememberMe").Length > 0) {
+                MessageBox.Show("Please restart the game for the new config to take effect.", "Error", MessageBoxButtons.OK, MessageBoxIcon.Information);
+            }
         }
 
         private void SendKeyCan()
         {
             [DllImport("User32.dll")]
-
             static extern int SetForegroundWindow(IntPtr point);
+            [DllImport("user32.dll")]
+            static extern uint SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
+            [DllImport("user32.dll")]
+            static extern short VkKeyScan(char ch);
+
             Process p = Process.GetProcessesByName("RememberMe").FirstOrDefault();
             if (p != null)
             {
                 IntPtr h = p.MainWindowHandle;
                 SetForegroundWindow(h);
-                SendKeys.Send(CancelText.Items[CancelText.SelectedIndex].ToString());
+                string hotkey = CancelText.Items[CancelText.SelectedIndex].ToString();
+                short scanCode;
+
+                // doesn't work right now, should set the right scancode to use for SendInput depending on the hotkey that was set before
+                if(hotkey.Length == 1) {
+                    scanCode = VkKeyScan(hotkey[0]);
+                } else {
+                    scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_" + hotkey);
+                }
+                INPUT[] input = new INPUT[1];
+
+                input[0].type = 1;
+                if(hotkey.Length == 1) input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE | KEYEVENTF.UNICODE;
+                else input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE;
+                input[0].U.ki.wScan = (ScanCodeShort)scanCode;
+                SendInput(1, input, INPUT.Size);
+
+                Thread.Sleep(100);
+
+                input[0].type = 1;
+                if(hotkey.Length == 1) input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE | KEYEVENTF.UNICODE | KEYEVENTF.KEYUP;
+                else input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE | KEYEVENTF.KEYUP;
+                input[0].U.ki.wScan = (ScanCodeShort)scanCode;
+                SendInput(1, input, INPUT.Size);
+                Console.WriteLine("Skip Inside Function");
             }
         }
 
@@ -135,14 +167,52 @@ namespace RememberMe1
         {
 
             [DllImport("User32.dll")]
-
             static extern int SetForegroundWindow(IntPtr point);
+            [DllImport("user32.dll")]
+            static extern uint SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
+            [DllImport("user32.dll")]
+            static extern short VkKeyScan(char ch);
+
             Process p = Process.GetProcessesByName("RememberMe").FirstOrDefault();
+            //IntPtr h = FindWindow(null, "Remember Me (32-bit, DX9)");
             if (p != null)
             {
                 IntPtr h = p.MainWindowHandle;
                 SetForegroundWindow(h);
-                SendKeys.Send(SloMoText.Items[SloMoText.SelectedIndex].ToString());
+
+                string hotkey = SloMoText.Items[SloMoText.SelectedIndex].ToString();
+                Console.WriteLine(hotkey);
+                short scanCode;
+
+                // doesn't work right now, should set the right scancode to use for SendInput depending on the hotkey that was set before
+                if(hotkey.Length == 1) {
+                    //scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_P");
+                    //Console.WriteLine(scanCodeArray.GetValue(0));
+                    scanCode = VkKeyScan(hotkey[0]);
+                } else {
+                    Array scanCodeArray = Enum.GetValues(typeof(ScanCodeShort));
+                    //scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_P");
+                    //scanCode = Enum.GetValues(typeof(ScanCodeShort)).GetValue(0);
+                    scanCode = 25;
+                }
+                //Console.WriteLine(Enum.GetValues(typeof(ScanCodeShort)));
+                INPUT[] input = new INPUT[1];
+
+                input[0].type = 1;
+                if(hotkey.Length == 1) input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE | KEYEVENTF.UNICODE;
+                else input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE;
+                input[0].U.ki.wScan = (ScanCodeShort)scanCode;
+                SendInput(1, input, INPUT.Size);
+
+                Thread.Sleep(100);
+
+                input[0].type = 1;
+                if(hotkey.Length == 1) input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE | KEYEVENTF.UNICODE | KEYEVENTF.KEYUP;
+                else input[0].U.ki.dwFlags = KEYEVENTF.SCANCODE | KEYEVENTF.KEYUP;
+                input[0].U.ki.wScan = (ScanCodeShort)scanCode;
+                SendInput(1, input, INPUT.Size);
+
+                Console.WriteLine("Speed up Inside Function");
             }
         }
 
@@ -192,10 +262,15 @@ namespace RememberMe1
                     isInCineamatic = m.ReadInt("base+0x12432C0");
                     textBox4.Text = isInCineamatic.ToString();
 
+                    /*if (curCheckpoint != Checkpointsaved) {  // needs to handle cases where you exit while inside of a cutscene, but doesn't work because there are cases where you get a checkpoint before the cutscene is over, which is bad in this case
+                        return;
+                    }*/
+
                     if(isInCineamatic == 1) {
                         if (command == SkipCommand.Skip)
                         {
                             Thread.Sleep(Time+50); //for autosplitter
+                            Console.WriteLine("Skip");
                             SendKeyCan();
                         }
 
@@ -206,15 +281,20 @@ namespace RememberMe1
                             {
                                 Thread.Sleep(Time);
                                 SendKeySlo();
+                                Console.WriteLine("Speed up, Timed");
                                 while(isInCineamatic == 1) {
                                     isInCineamatic = m.ReadInt("base+0x12432C0");
+                                    //Console.WriteLine("Wait Fast Forward, Timed," + " Loop " + loop.ToString());
                                 }
                             }
                             else 
                             {
                                 SendKeySlo();
+                                Thread.Sleep(300);
+                                Console.WriteLine("Speed up, Untimed");
                                 while(isInCineamatic == 1) {
                                     isInCineamatic = m.ReadInt("base+0x12432C0");
+                                    //Console.WriteLine("Wait Fast Forward, Untimed," + " Loop " + loop.ToString());
                                 }
                             }
                         }
@@ -222,15 +302,17 @@ namespace RememberMe1
                     else if (command == SkipCommand.FastForward && loop % 2 == 1) 
                     {
                         SendKeySlo();
+                        Console.WriteLine("Speed reset");
                     }
                     else if (command == SkipCommand.FastForward && loop % 2 == 0) 
                     {
                         while(isInCineamatic == 0) {
                             isInCineamatic = m.ReadInt("base+0x12432C0");
+                            //Console.WriteLine("Wait Fast Forward," + " Loop " + loop.ToString());
                         }
                         loop--;
                     }
-
+                    Console.WriteLine(loop);
                     loop++;
                 }
                 //command = SkipCommand.Nothing;
