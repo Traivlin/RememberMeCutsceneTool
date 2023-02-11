@@ -270,7 +270,6 @@ namespace RememberMe1
                             else 
                             {
                                 SendKeySlo();
-                                Thread.Sleep(300);
                                 Console.WriteLine("Speed up, Untimed");
                                 while(isInCineamatic == 1) {
                                     isInCineamatic = m.ReadInt("base+0x12432C0");
