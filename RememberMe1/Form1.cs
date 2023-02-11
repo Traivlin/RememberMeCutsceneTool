@@ -127,8 +127,6 @@ namespace RememberMe1
             static extern int SetForegroundWindow(IntPtr point);
             [DllImport("user32.dll")]
             static extern uint SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
-            [DllImport("user32.dll")]
-            static extern short VkKeyScan(char ch);
 
             Process p = Process.GetProcessesByName("RememberMe").FirstOrDefault();
             if (p != null)
@@ -138,12 +136,8 @@ namespace RememberMe1
                 string hotkey = CancelText.Items[CancelText.SelectedIndex].ToString();
                 short scanCode;
 
-                // doesn't work right now, should set the right scancode to use for SendInput depending on the hotkey that was set before
-                if(hotkey.Length == 1) {
-                    scanCode = VkKeyScan(hotkey[0]);
-                } else {
-                    scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_" + hotkey);
-                }
+                scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_" + hotkey, true);
+                
                 INPUT[] input = new INPUT[1];
 
                 input[0].type = 1;
@@ -170,11 +164,8 @@ namespace RememberMe1
             static extern int SetForegroundWindow(IntPtr point);
             [DllImport("user32.dll")]
             static extern uint SendInput(uint nInputs, [MarshalAs(UnmanagedType.LPArray), In] INPUT[] pInputs, int cbSize);
-            [DllImport("user32.dll")]
-            static extern short VkKeyScan(char ch);
 
             Process p = Process.GetProcessesByName("RememberMe").FirstOrDefault();
-            //IntPtr h = FindWindow(null, "Remember Me (32-bit, DX9)");
             if (p != null)
             {
                 IntPtr h = p.MainWindowHandle;
@@ -184,18 +175,7 @@ namespace RememberMe1
                 Console.WriteLine(hotkey);
                 short scanCode;
 
-                // doesn't work right now, should set the right scancode to use for SendInput depending on the hotkey that was set before
-                if(hotkey.Length == 1) {
-                    //scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_P");
-                    //Console.WriteLine(scanCodeArray.GetValue(0));
-                    scanCode = VkKeyScan(hotkey[0]);
-                } else {
-                    Array scanCodeArray = Enum.GetValues(typeof(ScanCodeShort));
-                    //scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_P");
-                    //scanCode = Enum.GetValues(typeof(ScanCodeShort)).GetValue(0);
-                    scanCode = 25;
-                }
-                //Console.WriteLine(Enum.GetValues(typeof(ScanCodeShort)));
+                scanCode = (short)Enum.Parse(typeof(ScanCodeShort), "Key_" + hotkey, true);
                 INPUT[] input = new INPUT[1];
 
                 input[0].type = 1;
